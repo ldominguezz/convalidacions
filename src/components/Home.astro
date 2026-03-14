@@ -141,80 +141,84 @@ const ciclesDesti =
   </div>
 </div>
 
-<script lang="ts">
-  // Aquest codi s'executa al navegador de l'usuari
+<script>
   import { createClient } from "@supabase/supabase-js";
 
-  // Necessitem instanciar Supabase de nou al client per poder fer consultes asíncrones
-  const url =
-    import.meta.env.PUBLIC_SUPABASE_URL || import.meta.env.SUPABASE_URL;
-  const key =
-    import.meta.env.PUBLIC_SUPABASE_ANON_KEY ||
-    import.meta.env.SUPABASE_ANON_KEY;
+  // Agafem les variables directament (assegura't que comencen per PUBLIC_)
+  const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
+  const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
-  // Only initialize when both vars exist and (optionally) in the browser
-  export const supabase =
-    url && key && typeof window !== "undefined" ? createClient(url, key) : null;
-
-  const form = document.getElementById("form-convalidacions");
+  const form = document.getElementById(
+    "form-convalidacions",
+  ) as HTMLFormElement;
   const resultatsContainer = document.getElementById("resultats-container");
-  const taulaBody = document.getElementById("taula-body");
   const missatgeBuit = document.getElementById("missatge-buit");
+  const taulaBody = document.getElementById(
+    "taula-body",
+  ) as HTMLTableSectionElement;
 
-  form?.addEventListener("submit", async (e) => {
-    e.preventDefault(); // Evitem que la pàgina es recarregui
+  if (form) {
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
 
-    const origenEl = document.getElementById("origen");
-    const destiEl = document.getElementById("desti");
+      // Obtenim els valors dels selects
+      const origenId = (document.getElementById("origen") as HTMLSelectElement)
+        .value;
+      const destiId = (document.getElementById("desti") as HTMLSelectElement)
+        .value;
 
-    const origenId =
-      origenEl instanceof HTMLSelectElement ? origenEl.value : "";
-    const destiId = destiEl instanceof HTMLSelectElement ? destiEl.value : "";
+      if (!origenId || !destiId) return;
 
-    // Mostrem la taula en mode càrrega
-    resultatsContainer?.classList.remove("hidden");
-    missatgeBuit?.classList.add("hidden");
-    if (taulaBody) {
+      // Estat visual de càrrega
+      resultatsContainer?.classList.remove("hidden");
+      missatgeBuit?.classList.add("hidden");
       taulaBody.innerHTML =
-        '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">Buscant a la base de dades...</td></tr>';
-    }
+        '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">Buscant convalidacions...</td></tr>';
 
-    try {
-      // Consulta "màgica": portem la convalidació I ELS NOMS dels mòduls relacionats al mateix temps
-      const { data, error } = await supabase
-        .from("convalidacions")
-        .select(
-          `
+      try {
+        const { data, error } = await supabase
+          .from("convalidacions")
+          .select(
+            `
           regla_nota,
           modul_desti:moduls!id_modul_desti(codi_modul, nom),
           modul_origen:moduls!id_modul_origen(nom)
         `,
-        )
-        .eq("id_cicle_origen", origenId)
-        .eq("id_cicle_desti", destiId);
+          )
+          .eq("id_cicle_origen", origenId)
+          .eq("id_cicle_desti", destiId);
 
-      if (error) throw error;
+        if (error) {
+          console.error("Error de Supabase:", error.message);
+          throw error;
+        }
 
-      if (taulaBody) taulaBody.innerHTML = ""; // Netegem la taula
+        taulaBody.innerHTML = "";
 
-      if (!data || data.length === 0) {
-        missatgeBuit?.classList.remove("hidden");
-        document.querySelector("table")?.classList.add("hidden"); // Ocultem la taula si està buida
-      } else {
-        document.querySelector("table")?.classList.remove("hidden"); // Mostrem la taula
+        if (!data || data.length === 0) {
+          missatgeBuit?.classList.remove("hidden");
+          // Opcional: amagar la taula si no hi ha dades
+          return;
+        }
 
-        data.forEach((fila) => {
-          // Format de destí
-          const textDesti = fila.modul_desti
-            ? `<span class="font-medium">${fila.modul_desti.codi_modul}</span> - ${fila.modul_desti.nom}`
-            : "Error";
+        data.forEach((fila: any) => {
+          const mDesti = Array.isArray(fila.modul_desti)
+            ? fila.modul_desti[0]
+            : fila.modul_desti;
+          const mOrigen = Array.isArray(fila.modul_origen)
+            ? fila.modul_origen[0]
+            : fila.modul_origen;
 
-          // Format d'origen (si és NULL vol dir que s'aporta tot el cicle/certificat)
-          const textOrigen = fila.modul_origen
-            ? fila.modul_origen.nom
+          const textDesti = mDesti
+            ? `<strong>${mDesti.codi_modul}</strong> - ${mDesti.nom}`
+            : "Mòdul desconegut";
+
+          const textOrigen = mOrigen
+            ? mOrigen.nom
             : '<span class="italic text-gray-400">Títol complet aportat</span>';
 
-          // Format de la nota (Badge amb Tailwind)
+          // --- LÒGICA PER A LA COLUMNA DE LA DRETA (NOTES) ---
           let badgeNota = "";
           if (fila.regla_nota === "CINC") {
             badgeNota =
@@ -225,20 +229,23 @@ const ciclesDesti =
           } else if (fila.regla_nota === "MITJANA_CICLE") {
             badgeNota =
               '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Nota mitjana cicle</span>';
+          } else {
+            // Si no coincideix amb cap, mostrem el text tal qual o un per defecte
+            badgeNota = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${fila.regla_nota || "Consultar"}</span>`;
           }
 
           const tr = document.createElement("tr");
           tr.innerHTML = `
-            <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
-            <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
-            <td class="whitespace-nowrap px-3 py-4 text-sm">${badgeNota}</td>
-          `;
-          taulaBody.appendChild(tr);
+    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
+    <td class="whitespace-nowrap px-3 py-4 text-sm">${badgeNota}</td>
+  `;
+          taulaBody?.appendChild(tr);
         });
+      } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : String(err);
+        taulaBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500">Error: ${errorMessage}</td></tr>`;
       }
-    } catch (err) {
-      console.error("Error en la consulta:", err);
-      taulaBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500 font-medium">S'ha produït un error al connectar amb la base de dades.</td></tr>`;
-    }
-  });
+    });
+  }
 </script>
