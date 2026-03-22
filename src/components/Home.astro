@@ -19,7 +19,7 @@ if (error) {
 
 // Filtrem els de destí perquè només mostri CFGM i CFGS (excloent els Certificats)
 const ciclesDesti =
-  cicles?.filter((c) => c.grau === "CFGM" || c.grau === "CFGS") || [];
+  cicles?.filter((c) => (c.grau === "CFGM" || c.grau === "CFGS") && c.impartit === true) || [];
 ---
 
 <div
@@ -82,7 +82,7 @@ const ciclesDesti =
           {
             ciclesDesti.map((c) => (
               <option value={c.id_cicle}>
-                {c.codi} - {c.nom}
+                {`[${c.grau}] `} - {c.nom}
               </option>
             ))
           }
