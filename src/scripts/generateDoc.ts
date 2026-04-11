@@ -6,7 +6,7 @@
  * Posa el fitxer logo.jpg a la mateixa carpeta que aquest script.
  */
 
-const {
+import {
   Document,
   Packer,
   Paragraph,
@@ -19,9 +19,9 @@ const {
   TextWrappingSide,
   HorizontalPositionRelativeFrom,
   VerticalPositionRelativeFrom,
-} = require("docx");
-const fs = require("fs");
-const path = require("path");
+} from "docx";
+import fs from "fs";
+import path from "path";
 
 /**
  * Genera un document .docx de resolució de convalidació.
@@ -41,7 +41,7 @@ const path = require("path");
  * @param {string} dades.logoPath         - Ruta al fitxer d'imatge del logo
  * @param {string} [outputPath]           - Ruta del fitxer de sortida
  */
-function generarDocument(dades, outputPath) {
+function generarDocument(dades: any, outputPath?: string) {
   const {
     nomAlumne,
     dni,
@@ -68,12 +68,12 @@ function generarDocument(dades, outputPath) {
   const buit = () =>
     new Paragraph({ children: [new TextRun({ ...fontBase, text: "" })] });
 
-  const seccio = (text) =>
+  const seccio = (text: string) =>
     new Paragraph({
       children: [new TextRun({ ...fontBold, text })],
     });
 
-  const textJustificat = (parts) =>
+  const textJustificat = (parts: { text: string; bold?: boolean }[]) =>
     new Paragraph({
       alignment: AlignmentType.BOTH,
       children: parts.map(
@@ -81,7 +81,7 @@ function generarDocument(dades, outputPath) {
       ),
     });
 
-  const liniaMoldul = ({ codi, nom, nota }) =>
+  const liniaMoldul = ({ codi, nom, nota }: { codi: string; nom: string; nota: number }) =>
     new Paragraph({
       children: [
         new TextRun({ ...fontBold, text: `${codi} \u2013 ${nom} \u2013 ` }),
@@ -218,7 +218,7 @@ function generarDocument(dades, outputPath) {
     buit(),
 
     // Mòduls
-    ...moduls.flatMap((m) => [liniaMoldul(m), buit()]),
+    ...moduls.flatMap((m: { codi: string; nom: string; nota: number }) => [liniaMoldul(m), buit()]),
 
     buit(),
     buit(),
@@ -274,6 +274,8 @@ function generarDocument(dades, outputPath) {
     console.log(`✅ Document generat: ${fileName}`);
   });
 }
+
+export { generarDocument };
 
 // ---- EXEMPLE D'ÚS ----
 /*generarDocument(

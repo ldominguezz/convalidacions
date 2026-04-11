@@ -1,7 +1,7 @@
 ---
 // Aquest codi s'executa al servidor (Server-Side Rendering)
 import { createClient } from "@supabase/supabase-js";
-
+import { generarDocument } from "../scripts/generateDoc.ts";
 // Inicialitzem Supabase
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -53,7 +53,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
     class="space-y-6 bg-gray-50 p-6 rounded-lg border border-gray-200"
   >
     <!-- Dades personals -->
-    <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <label for="nom" class="block text-sm font-semibold text-gray-700 mb-1"
           >Introdueix el teu nom complet</label
@@ -79,9 +79,9 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
         />
       </div>
     </div>
--->
+
     <!-- Escollir Familia i llei -->
-     <!-- 
+    <!-- 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <h2 class="text-lg font-semibold text-gray-900 mb-2">
@@ -141,8 +141,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
           {
             cicles?.map((c) => (
               <option value={c.id_cicle}>
-                {c.grau === "CP" ? "[CP] " : `[${c.grau} - ${c.llei}] `}{" "}
-                {c.nom}
+                {c.grau === "CP" ? "[CP] " : `[${c.grau} - ${c.llei}] `} {c.nom}
               </option>
             ))
           }
@@ -166,7 +165,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
           >
           {
             ciclesDesti.map((c) => (
-              <option value={c.id_cicle}>
+              <option value={c.id_cicle} data-codi={c.codi}>
                 {`[${c.grau}]`} - {c.nom}
               </option>
             ))
@@ -176,58 +175,67 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
     </div>
 
     <button
-      type="submit"
+      type="button"
+      id="btn-consultar"
       class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
     >
       Consultar Convalidacions
     </button>
+
+    <div id="resultats-container" class="mt-10 hidden">
+      <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
+        Resultat de la consulta
+      </h2>
+
+      <div
+        class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg"
+      >
+        <table class="min-w-full divide-y divide-gray-300">
+          <thead class="bg-gray-50">
+            <tr>
+              <th
+                scope="col"
+                class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900"
+                >Mòdul a Convalidar (Destí)</th
+              >
+              <th
+                scope="col"
+                class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                >Mòdul Prèvi (Origen)</th
+              >
+              <th
+                scope="col"
+                class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                >Regla / Nota</th
+              >
+            </tr>
+          </thead>
+          <tbody id="taula-body" class="divide-y divide-gray-200 bg-white">
+          </tbody>
+        </table>
+      </div>
+
+      <div
+        id="missatge-buit"
+        class="hidden mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200"
+      >
+        No s'han trobat convalidacions directes per a aquesta combinació de
+        cicles.
+      </div>
+      <button
+        type="submit"
+        id="btn-generar"
+        class="w-full flex justify-center mt-4 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+      >
+        Generar Documentacio
+      </button>
+    </div>
   </form>
-
-  <div id="resultats-container" class="mt-10 hidden">
-    <h2 class="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
-      Resultat de la consulta
-    </h2>
-
-    <div
-      class="overflow-hidden shadow ring-1 ring-black ring-opacity-5 rounded-lg"
-    >
-      <table class="min-w-full divide-y divide-gray-300">
-        <thead class="bg-gray-50">
-          <tr>
-            <th
-              scope="col"
-              class="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900"
-              >Mòdul a Convalidar (Destí)</th
-            >
-            <th
-              scope="col"
-              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-              >Mòdul Prèvi (Origen)</th
-            >
-            <th
-              scope="col"
-              class="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-              >Regla / Nota</th
-            >
-          </tr>
-        </thead>
-        <tbody id="taula-body" class="divide-y divide-gray-200 bg-white">
-        </tbody>
-      </table>
-    </div>
-
-    <div
-      id="missatge-buit"
-      class="hidden mt-4 p-4 bg-yellow-50 text-yellow-800 rounded-md border border-yellow-200"
-    >
-      No s'han trobat convalidacions directes per a aquesta combinació de
-      cicles.
-    </div>
-  </div>
 </div>
 
 <script>
   import { createClient } from "@supabase/supabase-js";
+import { generarDocument } from "../scripts/generateDoc";
 
   // Agafem les variables directament (assegura't que comencen per PUBLIC_)
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
@@ -237,109 +245,187 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
   const form = document.getElementById(
     "form-convalidacions",
   ) as HTMLFormElement;
+  const btnConsultar = document.getElementById(
+    "btn-consultar",
+  ) as HTMLButtonElement;
   const resultatsContainer = document.getElementById("resultats-container");
   const missatgeBuit = document.getElementById("missatge-buit");
   const taulaBody = document.getElementById(
     "taula-body",
   ) as HTMLTableSectionElement;
+  let resultatConvalidacions: Array<{
+    codiModul: string;
+    nomDesti: string;
+    nomOrigen: string;
+    reglaNota: string;
+  }> = [];
 
   if (form) {
-    form?.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    if (btnConsultar) {
+      btnConsultar?.addEventListener("click", async (e) => {
+        e.preventDefault();
 
-      // Obtenim els valors dels selects
-      const origenId = (document.getElementById("origen") as HTMLSelectElement)
-        .value;
-      const destiId = (document.getElementById("desti") as HTMLSelectElement)
-        .value;
+        // Obtenim els valors dels selects
+        const origenId = (
+          document.getElementById("origen") as HTMLSelectElement
+        ).value;
+        const destiId = (document.getElementById("desti") as HTMLSelectElement)
+          .value;
 
-      if (!origenId || !destiId) return;
+        if (!origenId || !destiId) return;
 
-      // Estat visual de càrrega
-      resultatsContainer?.classList.remove("hidden");
-      missatgeBuit?.classList.add("hidden");
+        // Estat visual de càrrega
+        resultatsContainer?.classList.remove("hidden");
+        missatgeBuit?.classList.add("hidden");
 
-      // Si són el mateix cicle, mostrem un missatge
-      if (origenId === destiId) {
+        // Si són el mateix cicle, mostrem un missatge
+        if (origenId === destiId) {
+          taulaBody.innerHTML =
+            '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">No es pot comparar el mateix cicle.</td></tr>';
+          return;
+        }
+
         taulaBody.innerHTML =
-          '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">No es pot comparar el mateix cicle./td></tr>';
-        return;
-      }
+          '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">Buscant convalidacions...</td></tr>';
 
-      taulaBody.innerHTML =
-        '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">Buscant convalidacions...</td></tr>';
-
-      try {
-        const { data, error } = await supabase
-          .from("convalidacions")
-          .select(
-            `
+        try {
+          const { data, error } = await supabase
+            .from("convalidacions")
+            .select(
+              `
           regla_nota,
           modul_desti:moduls!id_modul_desti(codi_modul, nom),
           modul_origen:moduls!id_modul_origen(nom)
         `,
-          )
-          .eq("id_cicle_origen", origenId)
-          .eq("id_cicle_desti", destiId);
+            )
+            .eq("id_cicle_origen", origenId)
+            .eq("id_cicle_desti", destiId);
 
-        if (error) {
-        
-          console.error("Error de Supabase:", error.message);
-          throw error;
-        }
-
-        taulaBody.innerHTML = "";
-
-        if (!data || data.length === 0) {
-          missatgeBuit?.classList.remove("hidden");
-          // Opcional: amagar la taula si no hi ha dades
-          return;
-        }
-
-        data.forEach((fila: any) => {
-          const mDesti = Array.isArray(fila.modul_desti)
-            ? fila.modul_desti[0]
-            : fila.modul_desti;
-          const mOrigen = Array.isArray(fila.modul_origen)
-            ? fila.modul_origen[0]
-            : fila.modul_origen;
-
-          const textDesti = mDesti
-            ? `<strong>${mDesti.codi_modul}</strong> - ${mDesti.nom}`
-            : "Mòdul desconegut";
-
-          const textOrigen = mOrigen
-            ? mOrigen.nom
-            : '<span class="italic text-gray-400">Títol complet aportat</span>';
-
-          // --- LÒGICA PER A LA COLUMNA DE LA DRETA (NOTES) ---
-          let badgeNota = "";
-          if (fila.regla_nota === "CINC") {
-            badgeNota =
-              '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">5 (CV)</span>';
-          } else if (fila.regla_nota === "MATEIXA_NOTA") {
-            badgeNota =
-              '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Nota del mòdul</span>';
-          } else if (fila.regla_nota === "MITJANA_CICLE") {
-            badgeNota =
-              '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Nota mitjana cicle</span>';
-          } else {
-            // Si no coincideix amb cap, mostrem el text tal qual o un per defecte
-            badgeNota = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${fila.regla_nota || "Consultar"}</span>`;
+          if (error) {
+            console.error("Error de Supabase:", error.message);
+            throw error;
           }
 
-          const tr = document.createElement("tr");
-          tr.innerHTML = `
+          taulaBody.innerHTML = "";
+
+          if (!data || data.length === 0) {
+            missatgeBuit?.classList.remove("hidden");
+            return;
+          }
+
+          data.forEach((fila: any) => {
+            const mDesti = Array.isArray(fila.modul_desti)
+              ? fila.modul_desti[0]
+              : fila.modul_desti;
+            const mOrigen = Array.isArray(fila.modul_origen)
+              ? fila.modul_origen[0]
+              : fila.modul_origen;
+
+            resultatConvalidacions.push({
+              codiModul: mDesti?.codi_modul ?? "",
+              nomDesti: mDesti?.nom ?? "Mòdul desconegut",
+              nomOrigen: mOrigen?.nom ?? "Títol complet aportat",
+              reglaNota: fila.regla_nota ?? "",
+            });
+            const textDesti = mDesti
+              ? `<strong>${mDesti.codi_modul}</strong> - ${mDesti.nom}`
+              : "Mòdul desconegut";
+
+            const textOrigen = mOrigen
+              ? mOrigen.nom
+              : '<span class="italic text-gray-400">Títol complet aportat</span>';
+
+            // --- LÒGICA PER A LA COLUMNA DE LA DRETA (NOTES) ---
+            let badgeNota = "";
+            if (fila.regla_nota === "CINC") {
+              badgeNota =
+                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">5 (CV)</span>';
+            } else if (fila.regla_nota === "MATEIXA_NOTA") {
+              badgeNota =
+                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Nota del mòdul</span>';
+            } else if (fila.regla_nota === "MITJANA_CICLE") {
+              badgeNota =
+                '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Nota mitjana cicle</span>';
+            } else {
+              // Si no coincideix amb cap, mostrem el text tal qual o un per defecte
+              badgeNota = `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">${fila.regla_nota || "Consultar"}</span>`;
+            }
+
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
     <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
     <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
     <td class="whitespace-nowrap px-3 py-4 text-sm">${badgeNota}</td>
   `;
-          taulaBody?.appendChild(tr);
+            taulaBody?.appendChild(tr);
+          });
+        } catch (err) {
+          const errorMessage = err instanceof Error ? err.message : String(err);
+          taulaBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500">Error: ${errorMessage}</td></tr>`;
+        }
+      });
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const nom = (document.getElementById("nom") as HTMLInputElement)?.value;
+        const dni = (document.getElementById("dni") as HTMLInputElement)?.value;
+
+        const destiSelect = document.getElementById(
+          "desti",
+        ) as HTMLSelectElement;
+        const nomDestiRaw = destiSelect.options[destiSelect.selectedIndex].text;
+        const cicleCodi = destiSelect.options[destiSelect.selectedIndex].dataset.codi ?? "";
+
+        // Exemple: "[CFGS] - Administració de Sistemes Informàtics"
+
+        // Extreu el grau
+        const grau = nomDestiRaw.includes("CFGS") ? "superior" : "mitjà";
+
+        // Extreu el nom net (tot el que hi ha després del "- ")
+        const cicleNom = nomDestiRaw.replace(/^\[.*?\]\s*-\s*/, "").trim();
+
+        // Funció per convertir la regla a nota numèrica
+        const reglaNota = (regla: string): number => {
+          if (regla === "CINC") return 5;
+          if (regla === "MATEIXA_NOTA") return 0;
+          if (regla === "MITJANA_CICLE") return 0;
+          return 0;
+        };
+
+        console.log("Dades per al document:", {
+          nom,
+          dni,
+          grau,
+          cicleNom,
+          convalidacions: resultatConvalidacions,
         });
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        taulaBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500">Error: ${errorMessage}</td></tr>`;
-      }
-    });
+
+        generarDocument(
+          {
+            nomAlumne: nom,
+            dni: dni,
+            grau: grau,
+            cicleNom: cicleNom,
+            cicleCodi: cicleCodi,
+            moduls: resultatConvalidacions.map((c) => ({
+              codi: c.codiModul,
+              nom: c.nomDesti,
+              nota: reglaNota(c.reglaNota),
+            })),
+            directora: "Ingrid Pifarré Ferri",
+            data: new Date().toLocaleDateString("ca-ES", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            }),
+            ciutat: "Barcelona",
+            nomCentre: "Centre d'Estudis Roca",
+            subtitolCentre: "ESO – Batxillerat – Cicles Formatius",
+            logoPath: "../assets/logo.jpg",
+          },
+          "/Users/laura/Projects/convalidacions/" + nom + ".docx",
+        );
+      });
+    }
   }
 </script>
