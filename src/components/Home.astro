@@ -400,7 +400,7 @@ import { generarDocument } from "../scripts/generateDoc";
           convalidacions: resultatConvalidacions,
         });
 
-        generarDocument(
+        await generarDocument(
           {
             nomAlumne: nom,
             dni: dni,
@@ -423,7 +423,7 @@ import { generarDocument } from "../scripts/generateDoc";
             subtitolCentre: "ESO – Batxillerat – Cicles Formatius",
             logoPath: "../assets/logo.jpg",
           },
-          "/Users/laura/Projects/convalidacions/" + nom + ".docx",
+           nom + ".docx",
         );
       });
     }

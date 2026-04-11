@@ -1,9 +1,6 @@
 /**
  * Generador de documents de Resolució de Convalidació de Crèdits
- * Ús: node generador_convalidacio.js
- * Instal·lació: npm install docx
- *
- * Posa el fitxer logo.jpg a la mateixa carpeta que aquest script.
+ * Versió per navegador (sense fs ni path — usa fetch + Blob + descàrrega automàtica)
  */
 
 import {
@@ -20,11 +17,9 @@ import {
   HorizontalPositionRelativeFrom,
   VerticalPositionRelativeFrom,
 } from "docx";
-import fs from "fs";
-import path from "path";
 
 /**
- * Genera un document .docx de resolució de convalidació.
+ * Genera un document .docx de resolució de convalidació i el descarrega al navegador.
  *
  * @param {Object} dades - Dades variables del document
  * @param {string} dades.nomAlumne        - Nom complet de l'alumne/a
@@ -38,10 +33,9 @@ import path from "path";
  * @param {string} dades.ciutat           - Ciutat (per defecte "Barcelona")
  * @param {string} dades.nomCentre        - Nom del centre (línia gran)
  * @param {string} dades.subtitolCentre   - Subtítol del centre (línia petita)
- * @param {string} dades.logoPath         - Ruta al fitxer d'imatge del logo
- * @param {string} [outputPath]           - Ruta del fitxer de sortida
+ * @param {string} [outputFileName]       - Nom del fitxer de sortida (opcional)
  */
-function generarDocument(dades: any, outputPath?: string) {
+async function generarDocument(dades: any, outputFileName?: string) {
   const {
     nomAlumne,
     dni,
@@ -54,8 +48,14 @@ function generarDocument(dades: any, outputPath?: string) {
     ciutat = "Barcelona",
     nomCentre = "Centre d\u2019Estudis Roca",
     subtitolCentre = "ESO \u2013 Batxillerat \u2013 Cicles Formatius",
-    logoPath = path.join(__dirname, "logo.jpg"),
   } = dades;
+
+  // ---- Carreguem el logo via fetch (funciona al navegador) ----
+  const logoResponse = await fetch("/logo.jpg");
+  if (!logoResponse.ok) {
+    throw new Error(`No s'ha pogut carregar el logo: ${logoResponse.statusText}`);
+  }
+  const logoData = await logoResponse.arrayBuffer();
 
   const cicleComplet = `${cicleNom} (${cicleCodi})`;
   const article = "l\u2019alumna"; // canvia a "l'alumne" si és masculí
@@ -91,14 +91,11 @@ function generarDocument(dades: any, outputPath?: string) {
     });
 
   // ---- Capçalera amb logo i nom del centre ----
-  const logoData = fs.readFileSync(logoPath);
-
-  // Logo flotant a l'esquerra (posició absoluta, com a l'original)
   const logoImg = new ImageRun({
     data: logoData,
     type: "jpg",
     transformation: {
-      width: 83,   // ~1.17cm, equivalent als 1171575 EMU originals (1 EMU = 914400/inch)
+      width: 83,
       height: 84,
     },
     floating: {
@@ -124,14 +121,10 @@ function generarDocument(dades: any, outputPath?: string) {
       new Paragraph({
         style: "Header",
         children: [
-          // Logo flotant
           logoImg,
-          // Espai + nom del centre centrat
           new TextRun({ text: " " }),
-          // Nom del centre (text inline centrat — simulem la caixa de text amb indentació)
         ],
       }),
-      // Nom gran del centre
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
@@ -144,7 +137,6 @@ function generarDocument(dades: any, outputPath?: string) {
           }),
         ],
       }),
-      // Subtítol del centre
       new Paragraph({
         alignment: AlignmentType.CENTER,
         children: [
@@ -157,7 +149,6 @@ function generarDocument(dades: any, outputPath?: string) {
           }),
         ],
       }),
-      // Línia en blanc sota la capçalera
       new Paragraph({ children: [new TextRun({ text: "" })] }),
     ],
   });
@@ -167,7 +158,6 @@ function generarDocument(dades: any, outputPath?: string) {
     buit(),
     buit(),
 
-    // Títol en barra blava
     new Paragraph({
       shading: { fill: "2F5496", type: ShadingType.CLEAR },
       children: [
@@ -217,13 +207,11 @@ function generarDocument(dades: any, outputPath?: string) {
     buit(),
     buit(),
 
-    // Mòduls
     ...moduls.flatMap((m: { codi: string; nom: string; nota: number }) => [liniaMoldul(m), buit()]),
 
     buit(),
     buit(),
 
-    // Peu: directora i data
     new Paragraph({
       children: [
         new TextRun({ ...fontBase, text: "La Directora" }),
@@ -238,7 +226,6 @@ function generarDocument(dades: any, outputPath?: string) {
     buit(),
     buit(),
 
-    // Signatura i segell
     new Paragraph({
       children: [
         new TextRun({ ...fontBase, text: directora }),
@@ -265,36 +252,20 @@ function generarDocument(dades: any, outputPath?: string) {
     ],
   });
 
-  const fileName =
-    outputPath ||
+  // ---- Descàrrega al navegador (sense fs) ----
+  const blob = await Packer.toBlob(doc);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download =
+    outputFileName ||
     `RESOLUCIO_${nomAlumne.replace(/\s+/g, "_").toUpperCase()}.docx`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
 
-  Packer.toBuffer(doc).then((buffer) => {
-    fs.writeFileSync(fileName, buffer);
-    console.log(`✅ Document generat: ${fileName}`);
-  });
+  console.log(`✅ Document descarregat: ${a.download}`);
 }
 
 export { generarDocument };
-
-// ---- EXEMPLE D'ÚS ----
-/*generarDocument(
-  {
-    nomAlumne: "Aitana López Jaenada",
-    dni: "49270438E",
-    grau: "superior",
-    cicleNom: "Imatge per al diagn\u00f2stic i medicina nuclear",
-    cicleCodi: "SAI0",
-    moduls: [
-      { codi: "MP 1709", nom: "IPO I", nota: 6 },
-      { codi: "MP 1710", nom: "IPO II", nota: 7 },
-    ],
-    directora: "Ingrid Pifarr\u00e9 Ferri",
-    data: "18 desembre de 2025",
-    ciutat: "Barcelona",
-    nomCentre: "Centre d\u2019Estudis Roca",
-    subtitolCentre: "ESO \u2013 Batxillerat \u2013 Cicles Formatius",
-    logoPath: "/mnt/user-data/uploads/logo.jpg",
-  },
-  "/home/claude/AITANA_LOPEZ_JAENADA_generat.docx"
-);*/
