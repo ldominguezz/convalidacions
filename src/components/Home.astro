@@ -1,7 +1,7 @@
 ---
 // Aquest codi s'executa al servidor (Server-Side Rendering)
 import { createClient } from "@supabase/supabase-js";
-import { generarDocument } from "../scripts/generateDoc.ts";
+
 // Inicialitzem Supabase
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
@@ -227,7 +227,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
         id="btn-generar"
         class="w-full flex justify-center mt-4 py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
       >
-        Generar Documentacio
+        Generar Documentació
       </button>
     </div>
   </form>
