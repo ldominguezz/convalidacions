@@ -11,10 +11,23 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const { data: cicles, error } = await supabase
   .from("cicles")
   .select("*")
-  .order("nom");
+  .order("llei");
 
 if (error) {
   console.error("Error carregant cicles:", error);
+}
+
+const { data: families, error: errorFamilia } = await supabase
+  .from("families")
+  .select("*")
+  .order("nom");
+
+console.log("Families data:", families);
+console.log("Families error:", errorFamilia);
+console.log("Supabase URL:", supabaseUrl);
+
+if (errorFamilia) {
+  console.error("Error carregant families:", errorFamilia);
 }
 
 // Filtrem els de destí perquè només mostri CFGM i CFGS (excloent els Certificats)
@@ -22,6 +35,9 @@ const ciclesDesti =
   cicles?.filter(
     (c) => (c.grau === "CFGM" || c.grau === "CFGS") && c.impartit === true,
   ) || [];
+
+// Aquesta és la "fórmula màgica" en Javascript per obtenir valors únics
+const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
 ---
 
 <div
@@ -40,7 +56,8 @@ const ciclesDesti =
     id="form-convalidacions"
     class="space-y-6 bg-gray-50 p-6 rounded-lg border border-gray-200"
   >
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <!-- Dades personals -->
+    <!-- <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <label for="nom" class="block text-sm font-semibold text-gray-700 mb-1"
           >Introdueix el teu nom complet</label
@@ -66,6 +83,49 @@ const ciclesDesti =
         />
       </div>
     </div>
+-->
+    <!-- Escollir Familia i llei -->
+     <!-- 
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div>
+        <h2 class="text-lg font-semibold text-gray-900 mb-2">
+          Informació sobre els estudis
+        </h2>
+        <label
+          for="familiaOrigen"
+          class="block text-sm font-semibold text-gray-700 mb-1"
+          >De quina familia professional provens?</label
+        >
+        <select
+          id="familiaOrigen"
+          name="familiaOrigen"
+          required
+          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5 bg-white text-gray-700"
+        >
+          <option value="" disabled selected>-- Selecciona la família --</option
+          >
+          {families?.map((f) => <option value={f.id_familia}>{f.nom}</option>)}
+        </select>
+      </div>
+
+      <div>
+        <label for="llei" class="block text-sm font-semibold text-gray-700 mb-1"
+          >Selecciona la llei</label
+        >
+        <select
+          id="llei"
+          name="llei"
+          required
+          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5 bg-white text-gray-700 border"
+        >
+          <option value="" disabled selected>-- Selecciona la llei --</option>
+
+          {lleisUniques.map((llei) => <option value={llei}>{llei}</option>)}
+        </select>
+      </div>
+    </div>
+    -->
+    <!-- Cicles concrets (origen i destí) -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
       <div>
         <label
@@ -85,7 +145,8 @@ const ciclesDesti =
           {
             cicles?.map((c) => (
               <option value={c.id_cicle}>
-                {c.grau === "ALTRES" ? "[CP] " : `[${c.grau}] `} {c.nom}
+                {c.grau === "CP" ? "[CP] " : `[${c.grau} - ${c.llei}] `}{" "}
+                {c.nom}
               </option>
             ))
           }
@@ -110,7 +171,7 @@ const ciclesDesti =
           {
             ciclesDesti.map((c) => (
               <option value={c.id_cicle}>
-                {`[${c.grau}] `} - {c.nom}
+                {`[${c.grau}]`} - {c.nom}
               </option>
             ))
           }
@@ -201,6 +262,14 @@ const ciclesDesti =
       // Estat visual de càrrega
       resultatsContainer?.classList.remove("hidden");
       missatgeBuit?.classList.add("hidden");
+
+      // Si són el mateix cicle, mostrem un missatge
+      if (origenId === destiId) {
+        taulaBody.innerHTML =
+          '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">No es pot comparar el mateix cicle./td></tr>';
+        return;
+      }
+
       taulaBody.innerHTML =
         '<tr><td colspan="3" class="px-6 py-8 text-center text-gray-500">Buscant convalidacions...</td></tr>';
 
