@@ -22,10 +22,6 @@ const { data: families, error: errorFamilia } = await supabase
   .select("*")
   .order("nom");
 
-console.log("Families data:", families);
-console.log("Families error:", errorFamilia);
-console.log("Supabase URL:", supabaseUrl);
-
 if (errorFamilia) {
   console.error("Error carregant families:", errorFamilia);
 }
@@ -287,6 +283,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
           .eq("id_cicle_desti", destiId);
 
         if (error) {
+        
           console.error("Error de Supabase:", error.message);
           throw error;
         }
