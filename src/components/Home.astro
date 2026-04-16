@@ -235,7 +235,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
 
 <script>
   import { createClient } from "@supabase/supabase-js";
-import { generarDocument } from "../scripts/generateDoc";
+  import { generarDocument } from "../scripts/generateDoc";
 
   // Agafem les variables directament (assegura't que comencen per PUBLIC_)
   const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
@@ -364,68 +364,66 @@ import { generarDocument } from "../scripts/generateDoc";
           taulaBody.innerHTML = `<tr><td colspan="3" class="px-6 py-8 text-center text-red-500">Error: ${errorMessage}</td></tr>`;
         }
       });
-      form?.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const nom = (document.getElementById("nom") as HTMLInputElement)?.value;
-        const dni = (document.getElementById("dni") as HTMLInputElement)?.value;
-
-        const destiSelect = document.getElementById(
-          "desti",
-        ) as HTMLSelectElement;
-        const nomDestiRaw = destiSelect.options[destiSelect.selectedIndex].text;
-        const cicleCodi = destiSelect.options[destiSelect.selectedIndex].dataset.codi ?? "";
-
-        // Exemple: "[CFGS] - Administració de Sistemes Informàtics"
-
-        // Extreu el grau
-        const grau = nomDestiRaw.includes("CFGS") ? "superior" : "mitjà";
-
-        // Extreu el nom net (tot el que hi ha després del "- ")
-        const cicleNom = nomDestiRaw.replace(/^\[.*?\]\s*-\s*/, "").trim();
-
-        // Funció per convertir la regla a nota numèrica
-        const reglaNota = (regla: string): number => {
-          if (regla === "CINC") return 5;
-          if (regla === "MATEIXA_NOTA") return 0;
-          if (regla === "MITJANA_CICLE") return 0;
-          return 0;
-        };
-
-        console.log("Dades per al document:", {
-          nom,
-          dni,
-          grau,
-          cicleNom,
-          convalidacions: resultatConvalidacions,
-        });
-
-        await generarDocument(
-          {
-            nomAlumne: nom,
-            dni: dni,
-            grau: grau,
-            cicleNom: cicleNom,
-            cicleCodi: cicleCodi,
-            moduls: resultatConvalidacions.map((c) => ({
-              codi: c.codiModul,
-              nom: c.nomDesti,
-              nota: reglaNota(c.reglaNota),
-            })),
-            directora: "Ingrid Pifarré Ferri",
-            data: new Date().toLocaleDateString("ca-ES", {
-              day: "numeric",
-              month: "long",
-              year: "numeric",
-            }),
-            ciutat: "Barcelona",
-            nomCentre: "Centre d'Estudis Roca",
-            subtitolCentre: "ESO – Batxillerat – Cicles Formatius",
-            logoPath: "../assets/logo.jpg",
-          },
-           nom + ".docx",
-        );
-      });
     }
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+
+      const nom = (document.getElementById("nom") as HTMLInputElement)?.value;
+      const dni = (document.getElementById("dni") as HTMLInputElement)?.value;
+
+      const destiSelect = document.getElementById("desti") as HTMLSelectElement;
+      const nomDestiRaw = destiSelect.options[destiSelect.selectedIndex].text;
+      const cicleCodi =
+        destiSelect.options[destiSelect.selectedIndex].dataset.codi ?? "";
+
+      // Extreu el grau
+      const grau = nomDestiRaw.includes("CFGS") ? "superior" : "mitjà";
+
+      // Extreu el nom net (tot el que hi ha després del "- ")
+      const cicleNom = nomDestiRaw.replace(/^\[.*?\]\s*-\s*/, "").trim();
+
+      // Funció per convertir la regla a nota numèrica
+      const reglaNota = (regla: string): number => {
+        if (regla === "CINC") return 5;
+        if (regla === "MATEIXA_NOTA") return 0;
+        if (regla === "MITJANA_CICLE") return 0;
+        return 0;
+      };
+
+      console.log("Dades per al document:", {
+        nom,
+        dni,
+        grau,
+        cicleNom,
+        convalidacions: resultatConvalidacions,
+      });
+
+      await generarDocument(
+        {
+          nomAlumne: nom,
+          dni: dni,
+          grau: grau,
+          cicleNom: cicleNom,
+          cicleCodi: cicleCodi,
+          moduls: resultatConvalidacions.map((c) => ({
+            codi: c.codiModul,
+            nom: c.nomDesti,
+            nota: reglaNota(c.reglaNota),
+          })),
+          directora: "Ingrid Pifarré Ferri",
+          data: new Date().toLocaleDateString("ca-ES", {
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          }),
+          ciutat: "Barcelona",
+          nomCentre: "Centre d'Estudis Roca",
+          subtitolCentre: "ESO – Batxillerat – Cicles Formatius",
+          logoPath: "../assets/logo.jpg",
+        },
+        nom + ".docx",
+      );
+      resultatConvalidacions = [];
+    });
   }
 </script>
