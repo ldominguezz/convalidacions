@@ -39,6 +39,7 @@ async function generarDocument(dades: any, outputFileName?: string) {
   const {
     nomAlumne,
     dni,
+    genere,
     grau = "superior",
     cicleNom,
     cicleCodi,
@@ -58,7 +59,8 @@ async function generarDocument(dades: any, outputFileName?: string) {
   const logoData = await logoResponse.arrayBuffer();
 
   const cicleComplet = `${cicleNom} (${cicleCodi})`;
-  const article = "l\u2019alumna"; // canvia a "l'alumne" si és masculí
+  const article = genere === "m" ? "l'alumne" : "l'alumna"; // canvia a "l'alumne" si és masculí
+  const matricula = genere === "m" ? "matriculat" : "matriculada";
 
   // Estils base
   const fontBase = { font: "Arial", size: 24 }; // 12pt
@@ -180,7 +182,7 @@ async function generarDocument(dades: any, outputFileName?: string) {
       { text: `${nomAlumne} `, bold: true },
       { text: "amb DNI " },
       { text: `${dni} `, bold: true },
-      { text: `matriculada en el cicle formatiu de grau ${grau} ` },
+      { text: `${matricula} en el cicle formatiu de grau ${grau} ` },
       { text: cicleComplet, bold: true },
       { text: "." },
     ]),

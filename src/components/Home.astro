@@ -7,7 +7,7 @@ const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Obtenim tots els cicles de la base de dades, ordenats alfabèticament
+// Obtenim tots els cicles de la base de dades, ordenats per la llei
 const { data: cicles, error } = await supabase
   .from("cicles")
   .select("*")
@@ -17,6 +17,7 @@ if (error) {
   console.error("Error carregant cicles:", error);
 }
 
+// Obtenim tots les families de la base de dades, ordenats per nom
 const { data: families, error: errorFamilia } = await supabase
   .from("families")
   .select("*")
@@ -26,7 +27,7 @@ if (errorFamilia) {
   console.error("Error carregant families:", errorFamilia);
 }
 
-// Filtrem els de destí perquè només mostri CFGM i CFGS (excloent els Certificats)
+// Filtrem els de destí perquè només mostri CFGM i CFGS (excloent els Certificats) i que estiguin impartits
 const ciclesDesti =
   cicles?.filter(
     (c) => (c.grau === "CFGM" || c.grau === "CFGS") && c.impartit === true,
@@ -53,7 +54,7 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
     class="space-y-6 bg-gray-50 p-6 rounded-lg border border-gray-200"
   >
     <!-- Dades personals -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div>
         <label for="nom" class="block text-sm font-semibold text-gray-700 mb-1"
           >Introdueix el teu nom complet</label
@@ -77,6 +78,22 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
           required
           class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5 bg-white text-gray-700"
         />
+      </div>
+        <div>
+        <label for="dni" class="block text-sm font-semibold text-gray-700 mb-1"
+          >Introdueix el gènere</label
+        >
+        <select
+          id="genere"
+          name="genere"
+          required
+          class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 p-2.5 bg-white text-gray-700"
+        >
+          <option value="">Selecciona el gènere</option>
+          <option value="m">Masculí</option>
+          <option value="f">Femení</option>
+          <option value="a">Altre</option>
+        </select>
       </div>
     </div>
 
@@ -353,10 +370,10 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
-    <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
-    <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
-    <td class="whitespace-nowrap px-3 py-4 text-sm">${badgeNota}</td>
-  `;
+              <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
+              <td class="whitespace-nowrap px-3 py-4 text-sm">${badgeNota}</td>
+            `;
             taulaBody?.appendChild(tr);
           });
         } catch (err) {
@@ -390,18 +407,13 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
         return 0;
       };
 
-      console.log("Dades per al document:", {
-        nom,
-        dni,
-        grau,
-        cicleNom,
-        convalidacions: resultatConvalidacions,
-      });
+      const genere = (document.getElementById("genere") as HTMLSelectElement)?.value;
 
       await generarDocument(
         {
           nomAlumne: nom,
           dni: dni,
+          genere: genere,
           grau: grau,
           cicleNom: cicleNom,
           cicleCodi: cicleCodi,
@@ -424,6 +436,13 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
         nom + ".docx",
       );
       resultatConvalidacions = [];
+      console.log("Dades per al document:", {
+        nom,
+        dni,
+        grau,
+        cicleNom,
+        convalidacions: resultatConvalidacions,
+      });
     });
   }
 </script>
