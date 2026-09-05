@@ -11,7 +11,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const { data: cicles, error } = await supabase
   .from("cicles")
   .select("*")
-  .order("llei");
+  .order("id_cicle");
 
 if (error) {
   console.error("Error carregant cicles:", error);
@@ -35,6 +35,14 @@ const ciclesDesti =
 
 // Aquesta és la "fórmula màgica" en Javascript per obtenir valors únics
 const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
+
+// Cicles per al select d'ORIGEN: LOE (i altres no antics) es veuen per defecte
+const ciclesPrincipals =
+  cicles?.filter((c) => c.llei !== "LOGSE" && c.grau !== "CP") || [];
+
+// Cicles LOGSE i CP: només es veuen si l'usuari marca el checkbox
+const ciclesAntics =
+  cicles?.filter((c) => c.llei === "LOGSE" || c.grau === "CP") || [];
 ---
 
 <div
@@ -156,13 +164,31 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
             >-- Selecciona el teu títol previ --</option
           >
           {
-            cicles?.map((c) => (
+            ciclesPrincipals.map((c) => (
               <option value={c.id_cicle}>
-                {c.grau === "CP" ? "[CP] " : `[${c.grau} - ${c.llei}] `} {c.nom}
+                {c.llei != "LOE" ? `[${c.grau} - ${c.llei}] ` : `[${c.grau}] `}
+                {c.nom}
               </option>
             ))
           }
         </select>
+
+        <div class="mt-2 flex items-center gap-2">
+          <input
+            type="checkbox"
+            id="mostra-antics"
+            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <label for="mostra-antics" class="text-sm text-gray-600 select-none">
+            Mostra també cicles LOGSE i CP
+          </label>
+        </div>
+
+        <script
+          type="application/json"
+          id="cicles-antics-data"
+          set:html={JSON.stringify(ciclesAntics).replace(/</g, "\\u003c")}
+        />
       </div>
 
       <div>
@@ -279,14 +305,51 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
     reglaNota: string;
   }> = [];
 
+  // --- Cicles LOGSE/CP: es mostren a l'origen només si es marca el checkbox ---
+  const ciclesAnticsRaw =
+    document.getElementById("cicles-antics-data")?.textContent || "[]";
+  const ciclesAnticsClient = JSON.parse(ciclesAnticsRaw);
 
+  const origenSelect = document.getElementById("origen") as HTMLSelectElement;
+  const checkboxAntics = document.getElementById(
+    "mostra-antics",
+  ) as HTMLInputElement;
+
+  function crearOptionAntic(c: any): HTMLOptionElement {
+    const opt = document.createElement("option");
+    opt.value = c.id_cicle;
+    opt.textContent =
+      c.grau === "CP" ? `[CP] ${c.nom}` : `[${c.grau} - ${c.llei}] ${c.nom}`;
+    return opt;
+  }
+
+  let optgroupAntics: HTMLOptGroupElement | null = null;
+
+  checkboxAntics?.addEventListener("change", () => {
+    if (checkboxAntics.checked) {
+      optgroupAntics = document.createElement("optgroup");
+      optgroupAntics.label = "LOGSE / CP";
+      ciclesAnticsClient.forEach((c: any) =>
+        optgroupAntics!.appendChild(crearOptionAntic(c)),
+      );
+      origenSelect.appendChild(optgroupAntics);
+    } else {
+      optgroupAntics?.remove();
+      optgroupAntics = null;
+      if (
+        origenSelect.selectedOptions[0]?.parentElement?.tagName === "OPTGROUP"
+      ) {
+        origenSelect.value = "";
+      }
+    }
+  });
 
   if (form) {
     if (btnConsultar) {
       btnConsultar?.addEventListener("click", async (e) => {
         e.preventDefault();
 
-      resultatConvalidacions = [];
+        resultatConvalidacions = [];
         // Obtenim els valors dels selects
         const origenId = (
           document.getElementById("origen") as HTMLSelectElement
@@ -327,6 +390,17 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
             console.error("Error de Supabase:", error.message);
             throw error;
           }
+
+          // Ordenem per codi de mòdul destí abans de pintar la taula
+          data?.sort((a: any, b: any) => {
+            const codiA =
+              (Array.isArray(a.modul_desti) ? a.modul_desti[0] : a.modul_desti)
+                ?.codi_modul ?? "";
+            const codiB =
+              (Array.isArray(b.modul_desti) ? b.modul_desti[0] : b.modul_desti)
+                ?.codi_modul ?? "";
+            return codiA.localeCompare(codiB, undefined, { numeric: true });
+          });
 
           taulaBody.innerHTML = "";
 
@@ -375,8 +449,8 @@ const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
 
             const tr = document.createElement("tr");
             tr.innerHTML = `
-              <td class="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
-              <td class="whitespace-nowrap px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
+              <td class="py-4 pl-4 pr-3 text-sm text-gray-900">${textDesti}</td>
+              <td class="px-3 py-4 text-sm text-gray-500">${textOrigen}</td>
               <td class="whitespace-nowrap px-3 py-4 text-sm">${badgeNota}</td>
             `;
             taulaBody?.appendChild(tr);
