@@ -37,12 +37,40 @@ const ciclesDesti =
 const lleisUniques = [...new Set(cicles?.map((c) => c.llei))];
 
 // Cicles per al select d'ORIGEN: LOE (i altres no antics) es veuen per defecte
+// (excloem grau 'ALTRES' perquè són comodins interns, no cicles reals seleccionables)
 const ciclesPrincipals =
-  cicles?.filter((c) => c.llei !== "LOGSE" && c.grau !== "CP") || [];
+  cicles?.filter(
+    (c) => c.llei !== "LOGSE" && c.grau !== "CP" && c.grau !== "ALTRES",
+  ) || [];
 
 // Cicles LOGSE i CP: només es veuen si l'usuari marca el checkbox
 const ciclesAntics =
   cicles?.filter((c) => c.llei === "LOGSE" || c.grau === "CP") || [];
+
+// Comodins: ANY_LOE (universal), FAM_* grau-agnòstics (p. ex. FAM_ADM, FAM_INF)
+// i FAM_*_GM / FAM_*_GS (restringits a un grau concret dins la família)
+const anyLoeCicle = cicles?.find((c) => c.codi === "ANY_LOE");
+
+const comodinsPerFamilia: Record<number, number> = {};
+const comodinsPerFamiliaGrau: Record<number, Record<string, number>> = {};
+
+cicles?.forEach((c) => {
+  if (c.grau !== "ALTRES" || c.codi === "ANY_LOE") return;
+
+  if (c.codi.endsWith("_GM") || c.codi.endsWith("_GS")) {
+    const grauObjectiu = c.codi.endsWith("_GM") ? "CFGM" : "CFGS";
+    if (!comodinsPerFamiliaGrau[c.id_familia]) comodinsPerFamiliaGrau[c.id_familia] = {};
+    comodinsPerFamiliaGrau[c.id_familia][grauObjectiu] = c.id_cicle;
+  } else {
+    comodinsPerFamilia[c.id_familia] = c.id_cicle;
+  }
+});
+
+const comodinsData = {
+  anyLoeId: anyLoeCicle?.id_cicle ?? null,
+  perFamilia: comodinsPerFamilia,
+  perFamiliaGrau: comodinsPerFamiliaGrau,
+};
 ---
 
 <div
@@ -165,7 +193,7 @@ const ciclesAntics =
           >
           {
             ciclesPrincipals.map((c) => (
-              <option value={c.id_cicle}>
+              <option value={c.id_cicle} data-familia={c.id_familia} data-grau={c.grau}>
                 {c.llei != "LOE" ? `[${c.grau} - ${c.llei}] ` : `[${c.grau}] `}
                 {c.nom}
               </option>
@@ -188,6 +216,12 @@ const ciclesAntics =
           type="application/json"
           id="cicles-antics-data"
           set:html={JSON.stringify(ciclesAntics).replace(/</g, "\\u003c")}
+        />
+
+        <script
+          type="application/json"
+          id="comodins-data"
+          set:html={JSON.stringify(comodinsData).replace(/</g, "\\u003c")}
         />
       </div>
 
@@ -309,6 +343,13 @@ const ciclesAntics =
   const ciclesAnticsRaw =
     document.getElementById("cicles-antics-data")?.textContent || "[]";
   const ciclesAnticsClient = JSON.parse(ciclesAnticsRaw);
+  const comodinsRaw =
+    document.getElementById("comodins-data")?.textContent || "{}";
+  const comodins: {
+    anyLoeId: number | null;
+    perFamilia: Record<string, number>;
+    perFamiliaGrau: Record<string, Record<string, number>>;
+  } = JSON.parse(comodinsRaw);
 
   const origenSelect = document.getElementById("origen") as HTMLSelectElement;
   const checkboxAntics = document.getElementById(
@@ -318,6 +359,8 @@ const ciclesAntics =
   function crearOptionAntic(c: any): HTMLOptionElement {
     const opt = document.createElement("option");
     opt.value = c.id_cicle;
+    opt.dataset.familia = c.id_familia;
+    opt.dataset.grau = c.grau;
     opt.textContent =
       c.grau === "CP" ? `[CP] ${c.nom}` : `[${c.grau} - ${c.llei}] ${c.nom}`;
     return opt;
@@ -351,9 +394,27 @@ const ciclesAntics =
 
         resultatConvalidacions = [];
         // Obtenim els valors dels selects
-        const origenId = (
-          document.getElementById("origen") as HTMLSelectElement
-        ).value;
+        const origenSelectEl = document.getElementById(
+          "origen",
+        ) as HTMLSelectElement;
+        const origenId = origenSelectEl.value;
+        const origenOpt = origenSelectEl.selectedOptions[0];
+        const origenFamiliaId = origenOpt?.dataset.familia;
+        const origenGrau = origenOpt?.dataset.grau;
+
+        const idsOrigen = [Number(origenId)];
+        if (comodins.anyLoeId) idsOrigen.push(comodins.anyLoeId);
+        if (origenFamiliaId && comodins.perFamilia[origenFamiliaId]) {
+          idsOrigen.push(comodins.perFamilia[origenFamiliaId]);
+        }
+        if (
+          origenFamiliaId &&
+          origenGrau &&
+          comodins.perFamiliaGrau[origenFamiliaId]?.[origenGrau]
+        ) {
+          idsOrigen.push(comodins.perFamiliaGrau[origenFamiliaId][origenGrau]);
+        }
+
         const destiId = (document.getElementById("desti") as HTMLSelectElement)
           .value;
 
@@ -383,7 +444,7 @@ const ciclesAntics =
           modul_origen:moduls!id_modul_origen(nom)
         `,
             )
-            .eq("id_cicle_origen", origenId)
+            .in("id_cicle_origen", idsOrigen)
             .eq("id_cicle_desti", destiId);
 
           if (error) {
